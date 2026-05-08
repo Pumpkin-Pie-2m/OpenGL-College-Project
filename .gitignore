@@ -1,0 +1,6 @@
+.vscode/
+opengl_app
+*.o
+*.exe
+*.log
+.DS_Store
