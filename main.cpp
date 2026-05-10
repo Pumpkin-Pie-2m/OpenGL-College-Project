@@ -1,64 +1,68 @@
 #include <GL/glut.h>
 #include <cmath>
+#include <vector>
 
-float earthAngle = 0.0f;
-float moonAngle = 0.0f;
+struct Star { float x, y; };
+std::vector<Star> stars;
+float angles[9] = {0}; 
+float speeds[9] = {1.5, 1.2, 1.0, 0.8, 0.6, 0.4, 0.3, 0.2, 4.0}; 
+float distances[9] = {60, 90, 130, 170, 220, 280, 330, 380, 25};
 
-// Midpoint Circle Algorithm from Lecture 5
-void drawCircle(int xc, int yc, int r) {
-    int x = 0, y = r;
-    int p = 1 - r;
-    glBegin(GL_POINTS);
-    while (x <= y) {
-        glVertex2i(xc + x, yc + y); glVertex2i(xc - x, yc + y);
-        glVertex2i(xc + x, yc - y); glVertex2i(xc - x, yc - y);
-        glVertex2i(xc + y, yc + x); glVertex2i(xc - y, yc + x);
-        glVertex2i(xc + y, yc - x); glVertex2i(xc - y, yc - x);
-        x++;
-        if (p < 0) p += 2 * x + 1;
-        else { y--; p += 2 * (x - y) + 1; }
+void drawFilledCircle(float r) {
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex2f(0, 0);
+    for (int i = 0; i <= 360; i++) {
+        float rad = i * 3.14159 / 180.0;
+        glVertex2f(cos(rad) * r, sin(rad) * r);
     }
     glEnd();
+}
+
+void drawPlanet(float dist, float angle, float size, float r, float g, float b, bool isMoon = false) {
+    glPushMatrix();
+    glRotatef(angle, 0, 0, 1);
+    glTranslatef(dist, 0, 0);
+    glColor3f(r, g, b);
+    drawFilledCircle(size);
+    if (!isMoon && dist == 130) { 
+        drawPlanet(25, angles[8], 4, 0.8, 0.8, 0.8, true);
+    }
+    glPopMatrix();
 }
 
 void display() {
     glClear(GL_COLOR_BUFFER_BIT);
     
-    // 1. Draw Static Sun (Yellow)
-    glColor3f(1.0, 1.0, 0.0);
-    drawCircle(400, 300, 40);
+    glPointSize(1.0);
+    glColor3f(1.0, 1.0, 1.0);
+    glBegin(GL_POINTS);
+    for (auto& s : stars) glVertex2f(s.x, s.y);
+    glEnd();
 
-    // 2. Earth Transformation (Orbiting the Sun)
     glPushMatrix();
-        glTranslatef(400, 300, 0);      // Move to Sun's center
-        glRotatef(earthAngle, 0, 0, 1); // Orbit rotation
-        glTranslatef(200, 0, 0);        // Earth's distance from Sun
-        
-        glColor3f(0.0, 0.5, 1.0);       // Blue Earth
-        drawCircle(0, 0, 20);
+    glTranslatef(400, 300, 0);
+    
+    glColor3f(1.0, 0.9, 0.0);
+    drawFilledCircle(35);
 
-        // 3. Moon Transformation (Orbiting the Earth)
-        // Since we are inside the Earth's Matrix, (0,0) is now the Earth's center
-        glPushMatrix();
-            glRotatef(moonAngle, 0, 0, 1); // Moon's rotation around Earth
-            glTranslatef(40, 0, 0);        // Moon's distance from Earth
-            
-            glColor3f(0.8, 0.8, 0.8);      // Grey Moon
-            drawCircle(0, 0, 8);
-        glPopMatrix(); 
+    drawPlanet(60,  angles[0], 5,  0.7, 0.7, 0.7); // Mercury
+    drawPlanet(90,  angles[1], 8,  1.0, 0.6, 0.0); // Venus
+    drawPlanet(130, angles[2], 9,  0.0, 0.5, 1.0); // Earth
+    drawPlanet(170, angles[3], 7,  1.0, 0.2, 0.0); // Mars
+    drawPlanet(220, angles[4], 18, 0.8, 0.6, 0.4); // Jupiter
+    drawPlanet(280, angles[5], 15, 0.9, 0.8, 0.6); // Saturn
+    drawPlanet(330, angles[6], 11, 0.5, 0.8, 0.9); // Uranus
+    drawPlanet(380, angles[7], 11, 0.2, 0.3, 1.0); // Neptune
 
-    glPopMatrix(); // Back to Global coordinates
-
+    glPopMatrix();
     glutSwapBuffers();
 }
 
 void timer(int) {
-    earthAngle += 0.5f; // Earth moves slower
-    moonAngle += 2.0f;  // Moon moves faster around Earth
-    
-    if (earthAngle > 360) earthAngle -= 360;
-    if (moonAngle > 360) moonAngle -= 360;
-
+    for(int i = 0; i < 9; i++) {
+        angles[i] += speeds[i];
+        if (angles[i] > 360) angles[i] -= 360;
+    }
     glutPostRedisplay();
     glutTimerFunc(16, timer, 0);
 }
@@ -68,13 +72,16 @@ void init() {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     gluOrtho2D(0, 800, 0, 600);
+    for (int i = 0; i < 200; i++) {
+        stars.push_back({(float)(rand() % 800), (float)(rand() % 600)});
+    }
 }
 
 int main(int argc, char** argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
     glutInitWindowSize(800, 600);
-    glutCreateWindow("Earth-Moon Orbit System");
+    glutCreateWindow("Extended Solar System");
     init();
     glutDisplayFunc(display);
     glutTimerFunc(0, timer, 0);
